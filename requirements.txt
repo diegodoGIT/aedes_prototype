@@ -10,3 +10,6 @@ seaborn
 rasterio
 thefuzz
 geopy
+xgboost
+catboost
+lightgbm
