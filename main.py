@@ -245,7 +245,7 @@ def get_models(preprocessor):
 def main():
     parser = argparse.ArgumentParser(description="Train ML Time Series Models — Dengue Prediction Lab")
     parser.add_argument('--model', type=str, required=True, 
-                        choices=['ridge', 'elasticnet', 'svr', 'rf', 'gb', 'hist_gb',
+                        choices=['ridge', 'lasso', 'elasticnet', 'svr', 'rf', 'gb', 'hist_gb',
                                  'xgb', 'catboost', 'lgbm', 'stacked'])
     parser.add_argument('--n_iter', type=int, default=50, help="Number of param candidates to try")
     args = parser.parse_args()

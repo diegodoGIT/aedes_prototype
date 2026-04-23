@@ -1,0 +1,2 @@
+timestamp,model,mae,mse,rmse,r2_score,time_seconds,best_params
+2026-04-19 00:10:31,gb,1.7301,6.773,2.6025,0.9986,3818.54,"{'subsample': 1.0, 'n_estimators': 500, 'min_samples_split': 2, 'max_features': None, 'max_depth': 9, 'learning_rate': 0.2}"
