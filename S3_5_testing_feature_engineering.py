@@ -14,6 +14,8 @@ from statsmodels.tsa.stattools import grangercausalitytests
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 from statsmodels.tools.tools import add_constant
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 # Silenciar warnings
 warnings.filterwarnings("ignore")
@@ -179,12 +181,41 @@ def apply_setup_preprocessing(df):
         df_clean = df_clean.drop(columns=existing_drops)
         logger.info(f"Columnas eliminadas por setup: {existing_drops}")
 
+    # 4. Aplicar PCA a grupos de variables
+    for pca_cfg in setup.get('pca_groups', []):
+        cols = pca_cfg.get('columns', [])
+        n_comp = pca_cfg.get('n_components', 1)
+        prefix = pca_cfg.get('prefix', 'pca')
+        drop_orig = pca_cfg.get('drop_originals', False)
+
+        available_cols = [c for c in cols if c in df_clean.columns]
+        if len(available_cols) >= n_comp and n_comp > 0:
+            logger.info(f"Aplicando PCA: {available_cols} -> {n_comp} componentes (Prefijo: {prefix})")
+            
+            # El PCA requiere datos escalados y sin NaNs
+            pca_data = df_clean[available_cols].fillna(df_clean[available_cols].median())
+            scaler = StandardScaler()
+            pca_input_scaled = scaler.fit_transform(pca_data)
+            
+            pca = PCA(n_components=n_comp)
+            pca_results = pca.fit_transform(pca_input_scaled)
+            
+            # Agregar componentes al dataframe
+            for i in range(n_comp):
+                df_clean[f"{prefix}_{i+1}"] = pca_results[:, i]
+            
+            if drop_orig:
+                df_clean = df_clean.drop(columns=available_cols)
+                logger.info(f"Variables originales eliminadas tras PCA: {available_cols}")
+        elif cols:
+            logger.warning(f"No se pudo aplicar PCA a {cols}. Columnas disponibles: {len(available_cols)}, n_components: {n_comp}")
+
     return df_clean
 
 def main():
     parser = argparse.ArgumentParser(description="S3.5: Testing Feature Engineering")
-    parser.add_argument('--target_lags', type=int, default=3, help="Número de rezagos del target")
-    parser.add_argument('--moving_avg', type=int, default=3, help="Ventana de media móvil del target")
+    parser.add_argument('--target_lags', type=int, default=0, help="Número de rezagos del target")
+    parser.add_argument('--moving_avg', type=int, default=0, help="Ventana de media móvil del target")
     args = parser.parse_args()
 
     input_path = Path("data/processed")

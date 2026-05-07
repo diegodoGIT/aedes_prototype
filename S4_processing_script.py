@@ -71,14 +71,12 @@ def get_model_configs():
         return TransformedTargetRegressor(regressor=base, func=np.log1p, inverse_func=np.expm1)
     
     return {
-
         'ridge': {
             'model': get_tt(Ridge(random_state=42)),
             'params': {
                 'regressor__alpha': np.logspace(-3, 5, 10)
             }
         },
-        # Combinaciones: 6 * 5 * 4 * 4 * 10 = 4,800
         'rf': {
             'model': RandomForestRegressor(random_state=42, n_jobs=-1),
             'params': {
@@ -89,7 +87,6 @@ def get_model_configs():
                 'max_features': ['sqrt', 'log2', None, 0.1, 0.2, 0.3, 0.5, 0.7, 0.8, 0.9]
             }
         },
-        # Combinaciones: 3 * 4 * 4 * 3 * 3 * 3 * 2 * 2 = 5,184
         'xgb': {
             'model': XGBRegressor(random_state=42, n_jobs=-1, tree_method='hist'),
             'params': {
@@ -103,7 +100,6 @@ def get_model_configs():
                 'gamma': [0, 0.1]
             }
         },
-        # Combinaciones: 3 * 4 * 4 * 4 * 2 * 2 * 2 * 2 * 2 = 6,144
         'lgbm': {
             'model': LGBMRegressor(random_state=42, n_jobs=-1, verbosity=-1),
             'params': {
@@ -118,7 +114,6 @@ def get_model_configs():
                 'min_child_samples': [10, 20]
             }
         },
-        # Combinaciones: 3 * 5 * 3 * 6 * 3 * 3 * 2 = 4,860
         'catboost': {
             'model': CatBoostRegressor(random_seed=42, verbose=False, allow_writing_files=False),
             'params': {
@@ -148,8 +143,9 @@ def calculate_departmental_metrics(meta, y_true, y_pred, method, model_key, mode
         try:
             rmse = np.sqrt(mean_squared_error(subset['y_true'], subset['y_pred']))
             mae = mean_absolute_error(subset['y_true'], subset['y_pred'])
+            r2 = r2_score(subset['y_true'], subset['y_pred'])
         except:
-            rmse, mae = np.nan, np.nan
+            rmse, mae, r2 = np.nan, np.nan, np.nan
 
         regional_stats.append({
             'timestamp': ts,
@@ -160,8 +156,10 @@ def calculate_departmental_metrics(meta, y_true, y_pred, method, model_key, mode
             'modo_ejecucion': mode,
             'rmse_regional': round(rmse, 4),
             'mae_regional': round(mae, 4),
-            'rmse_global_ext': round(global_metrics['rmse_ext'], 4),
-            'mae_global_ext': round(global_metrics['mae_ext'], 4),
+            'r2_regional': round(r2, 4),
+            'rmse_global_ext': round(global_metrics.get('rmse_ext', 0), 4),
+            'mae_global_ext': round(global_metrics.get('mae_ext', 0), 4),
+            'r2_global_ext': round(global_metrics.get('r2_ext', 0), 4),
             'n_muestras': len(subset)
         })
     return pd.DataFrame(regional_stats)
@@ -178,7 +176,11 @@ def log_iteration_to_csv(method, model_name, mode, params, metrics, duration):
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'imputation_method': method, 'model': model_name, 'mode': mode,
         'rmse_cv_mean': round(metrics.get('rmse_cv', 0), 4),
-        'rmse_external': round(metrics['rmse_ext'], 4),
+        'mae_cv_mean': round(metrics.get('mae_cv', 0), 4),
+        'r2_cv_mean': round(metrics.get('r2_cv', 0), 4),
+        'rmse_external': round(metrics.get('rmse_ext', 0), 4),
+        'mae_external': round(metrics.get('mae_ext', 0), 4),
+        'r2_external': round(metrics.get('r2_ext', 0), 4),
         'duration_sec': round(duration, 2), 'params': str(params)
     }
     pd.DataFrame([log_data]).to_csv(csv_path, mode='a', header=not file_exists, index=False)
@@ -201,6 +203,8 @@ def run_experiment(method, model_key, config, data_cv, is_fast=False, n_iter=5):
         model = config['model'].set_params(**params)
         
         fold_rmses = []
+        fold_maes = []
+        fold_r2s = []
         current_iter_regional = []
         
         # Evaluación Final Externa preliminar para métricas globales
@@ -208,7 +212,8 @@ def run_experiment(method, model_key, config, data_cv, is_fast=False, n_iter=5):
         preds_ext_full = model.predict(X_val_ext)
         g_metrics = {
             'rmse_ext': np.sqrt(mean_squared_error(y_val_ext, preds_ext_full)),
-            'mae_ext': mean_absolute_error(y_val_ext, preds_ext_full)
+            'mae_ext': mean_absolute_error(y_val_ext, preds_ext_full),
+            'r2_ext': r2_score(y_val_ext, preds_ext_full)
         }
 
         # BUCLE MANUAL DE CV PARA REGIONES
@@ -219,16 +224,30 @@ def run_experiment(method, model_key, config, data_cv, is_fast=False, n_iter=5):
             
             model.fit(X_tr, y_tr)
             p_v = model.predict(X_v)
+            
             fold_rmses.append(np.sqrt(mean_squared_error(y_v, p_v)))
+            fold_maes.append(mean_absolute_error(y_v, p_v))
+            fold_r2s.append(r2_score(y_v, p_v))
+            
             current_iter_regional.append(calculate_departmental_metrics(m_v, y_v, p_v, method, model_key, mode_label, f"fold_{f_idx+1}", g_metrics))
 
         mean_rmse_cv = np.mean(fold_rmses)
+        mean_mae_cv = np.mean(fold_maes)
+        mean_r2_cv = np.mean(fold_r2s)
         
         # Agregar desempeño regional de la VALIDACIÓN EXTERNA
         current_iter_regional.append(calculate_departmental_metrics(meta_ext, y_val_ext, preds_ext_full, method, model_key, mode_label, "validacion_externa", g_metrics))
 
         log_iteration_to_csv(method, model_key, mode_label, params, 
-                            {'rmse_cv': mean_rmse_cv, 'rmse_ext': g_metrics['rmse_ext']}, time.time() - start_time)
+                            {
+                                'rmse_cv': mean_rmse_cv, 
+                                'mae_cv': mean_mae_cv, 
+                                'r2_cv': mean_r2_cv,
+                                'rmse_ext': g_metrics['rmse_ext'],
+                                'mae_ext': g_metrics['mae_ext'],
+                                'r2_ext': g_metrics['r2_ext']
+                            }, 
+                            time.time() - start_time)
         
         if mean_rmse_cv < best_rmse_cv:
             best_rmse_cv = mean_rmse_cv

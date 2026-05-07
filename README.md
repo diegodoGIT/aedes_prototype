@@ -63,7 +63,7 @@ pip install -r requirements.txt
 Para un flujo completo, ejecute los scripts en este orden:
 ```bash
 python S1_data_preparation_script.py
-python S2_pre_processing_script.py
+python S2_pre_processing_script.py --target_lags 3
 python S3_feature_engineering.py   # Diagnóstico: revise logs/consola antes de seguir
 ```
 

@@ -257,7 +257,7 @@ if __name__ == "__main__":
         df = add_additional_env_vars(df, lags=LAG_SIZE)
         
         # Limpieza final de claves auxiliares
-        df.drop(columns=['loc_key', 'key'], inplace=True, errors='ignore')
+        df.drop(columns=['loc_key', 'key', 'pais'], inplace=True, errors='ignore')
         
         # 5. Almacenamiento y Metadatos
         output_path = f'data/dengue_data_v2_{HOJA}.csv'

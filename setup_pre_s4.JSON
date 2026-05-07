@@ -5,8 +5,43 @@
             "new_column": "temp_avg",
             "columns": ["tempmax", "tempmin"],
             "drop_originals": true
+        },
+                {
+            "new_column": "temp_avg_lag1",
+            "columns": ["tempmax_lag1", "tempmin_lag1"],
+            "drop_originals": true
+        },
+                {
+            "new_column": "temp_avg_lag2",
+            "columns": ["tempmax_lag2", "tempmin_lag2"],
+            "drop_originals": true
+        },
+                {
+            "new_column": "temp_avg_lag3",
+            "columns": ["tempmax_lag3", "tempmin_lag3"],
+            "drop_originals": true
         }
     ],
     "rename_columns": {},
-    "notes": "Configuración manual para atender alertas de redundancia de S3. 'average_pairs' combina dos columnas en su promedio y opcionalmente las elimina."
+    "pca_groups": [
+                {
+            "columns": ["dew_point", "dew_point_lag1","dew_point_lag2","dew_point_lag3"],
+            "n_components": 1,
+            "prefix": "pca_dew_point",
+            "drop_originals": true
+        },
+        {
+            "columns": ["target_lag1","target_lag2","target_lag3"],
+            "n_components": 1,
+            "prefix": "pca_target_lags",
+            "drop_originals": true
+        },
+                {
+            "columns": ["temp_avg","temp_avg_lag1","temp_avg_lag2","temp_avg_lag3"],
+            "n_components": 1,
+            "prefix": "pca_temp_avg",
+            "drop_originals": true
+        }
+    ],
+    "notes": "Configuración manual para atender alertas de redundancia de S3. 'average_pairs' combina columnas en su promedio. 'pca_groups' aplica PCA a las columnas listadas; 'n_components' define cuántos componentes mantener."
 }

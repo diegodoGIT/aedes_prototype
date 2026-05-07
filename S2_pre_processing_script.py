@@ -6,6 +6,7 @@ from sklearn.preprocessing import StandardScaler
 from pathlib import Path
 import logging
 import sys
+import argparse
 from datetime import datetime
 
 # --- Configuración de Logging (Unificada con el proyecto) ---
@@ -187,14 +188,14 @@ class TargetImputer:
         self.fit_transform_m5()                   # M5
         return self.results
 
-def feature_engineering(df):
+def feature_engineering(df, target_lags=3):
     """### Resumen:
     Agrega características de mes cíclico y rezagos de la variable objetivo.
     ### Detalles:
     Se crean dos nuevas columnas para representar el mes de forma cíclica utilizando funciones trigonométricas:
     'mes_sin' y 'mes_cos'. Esto permite que los modelos capturen la naturaleza cíclica de los
-    meses del año. Además, se generan rezagos de la variable objetivo 'casosconfirmados' para los 3
-    meses anteriores (target_lag1, target_lag2, target_lag3) dentro de cada grupo de departamento y
+    meses del año. Además, se generan rezagos de la variable objetivo 'casosconfirmados' para el número de
+    meses anteriores definido por 'target_lags' (por defecto 3) dentro de cada grupo de departamento y
     municipio. Los valores nulos resultantes de los rezagos se llenan con la mediana de cada grupo para esos
     rezagos, y cualquier valor nulo restante se llena con 0. Es importante destacar que no se realiza un dropna
     en esta función para permitir un análisis más granular en el reporte de cobertura por departamento, y solo se
@@ -219,21 +220,25 @@ def feature_engineering(df):
     #* crear columnas de mes cíclico
     df['mes_sin'] = np.sin(2 * np.pi * df['mes'] / 12)
     df['mes_cos'] = np.cos(2 * np.pi * df['mes'] / 12)
-    #* generar rezagos de la variable objetivo 'casosconfirmados' para los 3 meses anteriores dentro de cada grupo de departamento y municipio
-    df = df.sort_values(['departamento', 'municipio', 'year', 'mes'])
-    for l in range(1, 4):
-        df[f'target_lag{l}'] = df.groupby(['departamento', 'municipio'])['casosconfirmados'].shift(l)
     
-    lag_cols = [f'target_lag{l}' for l in range(1, 4)]
-    #* llenar los valores nulos resultantes de los rezagos con la mediana de cada grupo para esos rezagos
-    df[lag_cols] = df.groupby(['departamento', 'municipio'])[lag_cols].transform(lambda x: x.fillna(x.median()))
-    #* nulos adicionales en los rezagos de casosconfirmados se rellenan con 0
-    df[lag_cols] = df[lag_cols].fillna(0)
+    #* generar rezagos de la variable objetivo 'casosconfirmados' dentro de cada grupo de departamento y municipio
+    df = df.sort_values(['departamento', 'municipio', 'year', 'mes'])
+    lag_cols = []
+    for l in range(1, target_lags + 1):
+        col_name = f'target_lag{l}'
+        df[col_name] = df.groupby(['departamento', 'municipio'])['casosconfirmados'].shift(l)
+        lag_cols.append(col_name)
+    
+    if lag_cols:
+        #* llenar los valores nulos resultantes de los rezagos con la mediana de cada grupo para esos rezagos
+        df[lag_cols] = df.groupby(['departamento', 'municipio'])[lag_cols].transform(lambda x: x.fillna(x.median()))
+        #* nulos adicionales en los rezagos de casosconfirmados se rellenan con 0
+        df[lag_cols] = df[lag_cols].fillna(0)
     
     # IMPORTANTE: No hacemos dropna aquí para el reporte, solo al final de la exportación
     return df
 
-def generate_coverage_report(df_orig, imputed_datasets, processed_dir):
+def generate_coverage_report(df_orig, imputed_datasets, processed_dir, target_lags=3):
     """### Resumen:
     Genera un reporte de cobertura por departamento.
     ### Detalles:
@@ -247,14 +252,13 @@ def generate_coverage_report(df_orig, imputed_datasets, processed_dir):
     directorio de datos procesados. Este reporte es fundamental para entender la cobertura y
     representatividad de cada departamento en los datasets finales utilizados para modelado.
     """
-    logger.info("Generando reporte de cobertura por departamento...")
+    logger.info(f"Generando reporte de cobertura por departamento (Target Lags: {target_lags})...")
     report_rows = []
     depts = sorted(df_orig['departamento'].unique())
     
     #* Aplicar feature engineering a cada dataset imputado para luego verificar la inclusión de cada departamento en los datasets finales
 
-    final_sets = {m: feature_engineering(ds).dropna() for m, ds in imputed_datasets.items()}
-    #.dropna()
+    final_sets = {m: feature_engineering(ds, target_lags=target_lags).dropna() for m, ds in imputed_datasets.items()}
     #* iterar sobre departamento obteniendo numero de registros originales y numero de vacios
     for dept in depts:
         df_dept_orig = df_orig[df_orig['departamento'] == dept]
@@ -287,8 +291,13 @@ def generate_coverage_report(df_orig, imputed_datasets, processed_dir):
     pd.DataFrame(report_rows).to_csv(processed_dir / 'cobertura_departamentos.csv', index=False)
 
 def main():
+    parser = argparse.ArgumentParser(description="S2: Preprocesamiento e Imputación de Datos")
+    parser.add_argument('--target_lags', type=int, default=3, help="Número de rezagos del target a generar")
+    args = parser.parse_args()
+
     start_time = datetime.now()
-    logger.info("=== INICIO DEL PREPROCESAMIENTO Y GENERACIÓN DE DATASETS (S2) ===")
+    logger.info(f"=== INICIO DEL PREPROCESAMIENTO Y GENERACIÓN DE DATASETS (S2) ===")
+    logger.info(f"Configuración: Target Lags = {args.target_lags}")
     
     #* Creación de directorio para datos procesados
     processed_dir = Path('data/processed')
@@ -329,11 +338,11 @@ def main():
     #* imputed_datasets es un diccionario con claves M1, M2, M3, M4, M5 y valores los dataframes imputados correspondientes
     imputed_datasets = imputer.run_all()
     #* Generación de reporte de cobertura por departamento
-    generate_coverage_report(df, imputed_datasets, processed_dir)
+    generate_coverage_report(df, imputed_datasets, processed_dir, target_lags=args.target_lags)
     #* Exportación de datasets finales
     for method, df_imp in imputed_datasets.items():
         logger.info(f"Procesando dataset final para {method}...")
-        df_final = feature_engineering(df_imp)
+        df_final = feature_engineering(df_imp, target_lags=args.target_lags)
         #* Exportar solo después de feature engineering y dropna
         df_final = df_final.dropna()
         #* Guardar con metadatos para main_v2.py
