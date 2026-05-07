@@ -11,7 +11,10 @@ Este script actúa como un puente crítico entre la imputación de datos (S2) y 
 Aplica las reglas de limpieza y consolidación definidas en el archivo JSON:
 *   **Promedios de columnas**: Combina variables redundantes.
 *   **Renombramiento**: Normaliza nombres de atributos.
-*   **Eliminación selectiva**: Remueve columnas que el analista considere ruidosas tras el diagnóstico de S3.
+*   **Eliminación selectiva**: Remueve columnas ruidosas.
+*   **Transformación PCA**: Aplica Análisis de Componentes Principales a grupos de variables para reducir dimensionalidad:
+    *   **Escalado Automático**: El script aplica `StandardScaler` antes del PCA.
+    *   **Configuración**: Se define en `pca_groups` especificando columnas, número de componentes y prefijo.
 
 ### B. Ingeniería del Target
 Genera variables predictivas basadas en el comportamiento histórico del dengue:
@@ -38,7 +41,28 @@ python S3_5_testing_feature_engineering.py --target_lags 3 --moving_avg 3
 
 ---
 
-## 3. Salida y Trazabilidad
+## 3. Configuración de PCA en `setup_pre_s4.JSON`
+Para aplicar PCA, se debe editar el campo `pca_groups` en el archivo de configuración:
+
+```json
+"pca_groups": [
+    {
+        "columns": ["tempmax", "tempmin", "temp_avg"],
+        "n_components": 1,
+        "prefix": "pca_temperatura",
+        "drop_originals": true
+    }
+]
+```
+
+*   **`columns`**: Lista de variables a colapsar.
+*   **`n_components`**: Cantidad de dimensiones a mantener.
+*   **`prefix`**: Nombre base para las nuevas columnas (ej. `pca_temperatura_1`).
+*   **`drop_originals`**: Si es `true`, elimina las variables de entrada tras crear los componentes.
+
+---
+
+## 4. Salida y Trazabilidad
 El script genera nuevos archivos en `data/processed/` siguiendo el patrón:
 `dengue_imputed_M{X}_modified_{YYYYMMDD_HHMMSS}.csv`
 

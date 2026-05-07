@@ -17,10 +17,19 @@ Se generan cinco datasets independientes para comparar diferentes estrategias de
 ### 2. Ingeniería de Características (Feature Engineering)
 Para cada dataset imputado, se aplican las siguientes transformaciones:
 *   **Variables Cíclicas:** Transformación del mes en coordenadas `mes_sin` y `mes_cos` para que el modelo entienda la naturaleza circular del año (diciembre cerca de enero).
-*   **Lags del Target:** Creación de rezagos de 1, 2 y 3 meses para la variable `casosconfirmados`.
+*   **Lags del Target:** Creación de rezagos configurables para la variable `casosconfirmados` (por defecto 3 meses).
 *   **Recuperación Ambiental:** Imputación de variables climáticas faltantes (NDVI, Dew Point, etc.) usando la media local (municipio o departamento) para evitar la pérdida de registros recuperados por la imputación del target.
 
-### 3. Reporte de Cobertura
+## Parámetros de Ejecución
+```bash
+python S2_pre_processing_script.py --target_lags 3
+```
+
+| Parámetro | Tipo | Por Defecto | Descripción |
+| :--- | :--- | :--- | :--- |
+| `--target_lags` | `int` | `3` | Cantidad de meses de historia de la variable objetivo a generar como predictores. |
+
+## Requisitos de Entrada (Inputs)
 El script genera un análisis crítico de representatividad:
 *   Evalúa cada departamento para verificar si posee suficientes datos tras la imputación y el feature engineering.
 *   Registra las razones de exclusión (ej. datos insuficientes) para asegurar la transparencia en la selección del dataset final.
