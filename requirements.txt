@@ -4,7 +4,10 @@
 
 pandas
 numpy
+statsmodels
 scikit-learn
+scipy
+joblib
 matplotlib
 seaborn
 rasterio

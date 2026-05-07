@@ -1,0 +1,12 @@
+{
+    "drop_columns": [],
+    "average_pairs": [
+        {
+            "new_column": "temp_avg",
+            "columns": ["tempmax", "tempmin"],
+            "drop_originals": true
+        }
+    ],
+    "rename_columns": {},
+    "notes": "Configuración manual para atender alertas de redundancia de S3. 'average_pairs' combina dos columnas en su promedio y opcionalmente las elimina."
+}
