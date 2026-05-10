@@ -21,6 +21,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# --- Parámetros de Configuración Interna (Modificables en el script) ---
+# Estas opciones permiten controlar transformaciones sin necesidad de argumentos de línea de comandos.
+APPLY_DUMMIES = True  # Cambiar a True para habilitar la conversión a variables dummies
+CATEGORICAL_COLS = ['fenomeno', 'fenomeno_lag1','fenomeno_lag2','fenomeno_lag3']  # Columnas a transformar si APPLY_DUMMIES es True
+#* No es necesario incluir el mes porque ya esta compensado en las columnas de mes cíclico (mes_sin y mes_cos) que se generan
+#* en la función feature_engineering, y de hecho incluirlo como dummy podría generar multicolinealidad con estas columnas cíclicas.
+# ----------------------------------------------------------------------
+
 class TargetImputer:
     def __init__(self, df, target_col='casosconfirmados', year_col='year', month_col='mes'):
         self.df_original = df.sort_values(['departamento', 'municipio', 'year', 'month_idx' if 'month_idx' in df.columns else month_col]).copy()
@@ -290,6 +298,47 @@ def generate_coverage_report(df_orig, imputed_datasets, processed_dir, target_la
         
     pd.DataFrame(report_rows).to_csv(processed_dir / 'cobertura_departamentos.csv', index=False)
 
+def apply_categorical_encoding(df, columns, apply=False):
+    """
+    ### Resumen:
+    Transforma variables categóricas seleccionadas en variables dummy.
+    ### Detalles:
+    Si 'apply' es True, utiliza pd.get_dummies para convertir las columnas especificadas
+    en indicadores binarios. Se utiliza drop_first=True para evitar la trampa de la
+    variable dummy (multicolinealidad). Esta transformación se aplica al final del
+    procesamiento para no interferir con las agrupaciones por departamento/municipio.
+    """
+    if not apply or not columns:
+        return df
+    
+    logger.info(f"Aplicando codificación dummy a las columnas: {columns}")
+    # Filtramos solo las columnas que realmente existen en el DataFrame
+    existing_cols = [c for c in columns if c in df.columns]
+    if existing_cols:
+        return pd.get_dummies(df, columns=existing_cols, drop_first=True, dtype=np.uint8)
+    return df
+
+def save_location_auxiliary(df, processed_dir):
+    """
+    ### Resumen:
+    Guarda un archivo auxiliar con las combinaciones únicas de ubicación.
+    ### Detalles:
+    Extrae las columnas de departamento, municipio, longitud y latitud,
+    obtiene las filas únicas y las guarda en 'municipios_coordenadas.csv'.
+    """
+    cols_interes = ['departamento', 'municipio', 'longitud', 'latitud']
+    # Verificar cuáles de estas columnas existen realmente
+    available_cols = [c for c in cols_interes if c in df.columns]
+    
+    if len(available_cols) > 0:
+        logger.info(f"Generando archivo auxiliar de ubicaciones con columnas: {available_cols}")
+        df_coords = df[available_cols].drop_duplicates().sort_values(['departamento', 'municipio'])
+        output_path = processed_dir / 'municipios_coordenadas.csv'
+        df_coords.to_csv(output_path, index=False)
+        logger.info(f"Archivo de coordenadas guardado en: {output_path}")
+    else:
+        logger.warning("No se encontraron columnas de ubicación (departamento, municipio, longitud, latitud) para generar el archivo auxiliar.")
+
 def main():
     parser = argparse.ArgumentParser(description="S2: Preprocesamiento e Imputación de Datos")
     parser.add_argument('--target_lags', type=int, default=3, help="Número de rezagos del target a generar")
@@ -328,8 +377,11 @@ def main():
         else:
             logger.info("No se detectaron columnas de rezago (lags) en el dataset original.")
         # --------------------------------------------
+        
+        # --- Generar archivo auxiliar de ubicaciones ---
+        save_location_auxiliary(df, processed_dir)
+        # -----------------------------------------------
 
-        #* Eliminar columna pais si existe, ya que tiene nulos que coinciden con casosconfirmados
     else:
         logger.error("Base de datos no encontrada.")
         return
@@ -345,6 +397,10 @@ def main():
         df_final = feature_engineering(df_imp, target_lags=args.target_lags)
         #* Exportar solo después de feature engineering y dropna
         df_final = df_final.dropna()
+        
+        #* Codificación categórica (opcional según parámetros internos)
+        df_final = apply_categorical_encoding(df_final, CATEGORICAL_COLS, apply=APPLY_DUMMIES)
+        
         #* Guardar con metadatos para main_v2.py
         df_final.to_csv(processed_dir / f'dengue_imputed_{method}.csv', index=False)
         logger.info(f"Exportado: {method} con {len(df_final)} registros.")
