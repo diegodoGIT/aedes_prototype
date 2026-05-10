@@ -242,25 +242,33 @@ def main():
             df = apply_setup_preprocessing(df)
             
             # 2. Rezagos dinámicos y Media Móvil al Target
-            df = df.sort_values(['departamento', 'municipio', 'year', 'mes'])
+            df = df.sort_values(['latitud', 'longitud', 'year', 'mes'])
             
             # Rezagos
             for l in range(1, args.target_lags + 1):
                 col = f'target_lag{l}'
-                df[col] = df.groupby(['departamento', 'municipio'])['casosconfirmados'].shift(l)
-                df[col] = df.groupby(['departamento', 'municipio'])[col].transform(lambda x: x.fillna(x.median())).fillna(0)
+                df[col] = df.groupby(['latitud', 'longitud'])['casosconfirmados'].shift(l)
+                df[col] = df.groupby(['latitud', 'longitud'])[col].transform(lambda x: x.fillna(x.median())).fillna(0)
             
             # Media Móvil
             if args.moving_avg > 0:
                 ma_col = f'target_ma{args.moving_avg}'
-                df[ma_col] = df.groupby(['departamento', 'municipio'])['casosconfirmados'].transform(
+                df[ma_col] = df.groupby(['latitud', 'longitud'])['casosconfirmados'].transform(
                     lambda x: x.rolling(window=args.moving_avg, min_periods=1).mean()
                 ).shift(1) # Shift 1 para evitar fuga de información
-                df[ma_col] = df.groupby(['departamento', 'municipio'])[ma_col].transform(lambda x: x.fillna(x.median())).fillna(0)
+                df[ma_col] = df.groupby(['latitud', 'longitud'])[ma_col].transform(lambda x: x.fillna(x.median())).fillna(0)
 
             # 3. Ejecutar Diagnóstico de S3 sobre el nuevo dataset
             analyst = DengueFeatureAnalyst(df, f"{method}_modified")
             analyst.run_full_diagnostic()
+            
+            # --- Mostrar Estructura Final (Columnas y Tipos) ---
+            logger.info(f"--- Estructura Final del Dataset ({method}_modified) ---")
+            types_summary = df.dtypes.to_string()
+            for line in types_summary.split('\n'):
+                logger.info(f" > {line}")
+            logger.info(f"Total de columnas: {len(df.columns)}")
+            # ---------------------------------------------------
             
             # 4. Guardar dataset modificado
             new_filename = f"{f_path.stem}_modified_{timestamp}.csv"
