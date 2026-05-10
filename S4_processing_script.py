@@ -283,6 +283,22 @@ def main():
         logger.info(f"Procesando: {method}")
         df = pd.read_csv(f_path)
         
+        # --- Recuperación de Metadatos Geográficos (desde S2) ---
+        # Si las columnas de nombres no están (por dummies en S2), las recuperamos usando coordenadas
+        aux_path = processed_dir / 'municipios_coordenadas.csv'
+        if aux_path.exists() and ('departamento' not in df.columns or 'municipio' not in df.columns):
+            logger.info(f"Restaurando nombres de departamentos/municipios desde {aux_path}")
+            df_aux = pd.read_csv(aux_path)
+            # Asegurar coincidencia de tipos para el merge
+            for col in ['longitud', 'latitud']:
+                if col in df.columns and col in df_aux.columns:
+                    df[col] = df[col].astype(float)
+                    df_aux[col] = df_aux[col].astype(float)
+            
+            # Mergear para recuperar las etiquetas categóricas necesarias para el reporte regional
+            df = df.merge(df_aux, on=['longitud', 'latitud'], how='left')
+        # -------------------------------------------------------
+
         df = df[df['year'] < 2024]
         
         # [PUNTO CLAVE: SPLIT POOL CV Y VAL EXTERNA]
@@ -290,6 +306,8 @@ def main():
         df_ext = df[df['year'] > 2020].copy()
         
         def split(data):
+            # X solo contiene variables numéricas (excluyendo el target)
+            # departamento y municipio al ser strings (restaurados del aux) quedan fuera de X automáticamente
             X = data.select_dtypes(include=[np.number]).drop(columns=['casosconfirmados'], errors='ignore')
             return X, data['casosconfirmados'], data[['departamento', 'municipio', 'year']]
 
