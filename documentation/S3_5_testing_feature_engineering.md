@@ -17,9 +17,10 @@ Aplica las reglas de limpieza y consolidación definidas en el archivo JSON:
     *   **Configuración**: Se define en `pca_groups` especificando columnas, número de componentes y prefijo.
 
 ### B. Ingeniería del Target
-Genera variables predictivas basadas en el comportamiento histórico del dengue:
-*   **Rezagos (Lags)**: Crea columnas con los valores de `casosconfirmados` de meses anteriores (configurable mediante `--target_lags`).
-*   **Media Móvil (Moving Average)**: Calcula el promedio de casos en una ventana temporal previa (configurable mediante `--moving_avg`), aplicando un `shift(1)` para evitar fuga de información (*data leakage*).
+Genera variables predictivas basadas en el comportamiento histórico del dengue, asegurando la consistencia espacial mediante el uso de coordenadas (**latitud** y **longitud**), dado que las etiquetas de texto son eliminadas en el paso previo:
+*   **Ordenamiento Crítico**: El dataset se ordena por `latitud`, `longitud`, `year` y `mes` para garantizar que los rezagos correspondan a la misma ubicación.
+*   **Rezagos (Lags)**: Crea columnas con los valores de `casosconfirmados` de meses anteriores (configurable mediante `--target_lags`), agrupando por coordenadas.
+*   **Media Móvil (Moving Average)**: Calcula el promedio de casos en una ventana temporal previa (configurable mediante `--moving_avg`), aplicando un `shift(1)` para evitar fuga de información (*data leakage*), también agrupando por coordenadas.
 
 ### C. Diagnóstico de Calidad
 Ejecuta el mismo conjunto de pruebas que **S3_feature_engineering.py** para asegurar que las nuevas variables no introduzcan problemas:

@@ -13,7 +13,15 @@ A diferencia de versiones anteriores, S4 **no realiza ingeniería de variables n
 
 ---
 
-## 2. Modos de Ejecución
+## 2. Recuperación de Metadatos Geográficos
+Dado que los datasets procesados por S3.5 suelen carecer de etiquetas de texto (`departamento`, `municipio`) debido a la codificación dummy o eliminación explícita para el modelado, el script S4 integra una fase de restauración:
+*   **Fuente**: Utiliza el archivo auxiliar `data/processed/municipios_coordenadas.csv` generado en la etapa S2.
+*   **Mecanismo**: Realiza un cruce (*merge*) basado en las columnas `latitud` y `longitud`.
+*   **Propósito**: Esta restauración es esencial para generar el reporte de métricas regionales (`regional_performance.csv`), permitiendo desglosar el error del modelo por entidad territorial real.
+
+---
+
+## 3. Modos de Ejecución
 El script mantiene su flexibilidad para pruebas y producción:
 
 ### A. Modo Iterativo (Por defecto)
