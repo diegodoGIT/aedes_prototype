@@ -1,5 +1,5 @@
 {
-    "drop_columns": [],
+    "drop_columns": ["departamento","municipio","date","cod_muni","tipo"],
     "average_pairs": [
         {
             "new_column": "temp_avg",
