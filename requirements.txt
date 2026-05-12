@@ -16,3 +16,5 @@ geopy
 xgboost
 catboost
 lightgbm
+openpyxl
+unidecode
