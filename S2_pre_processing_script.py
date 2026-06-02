@@ -351,8 +351,11 @@ class EndemicChannelBuilder:
                         if pd.isna(current_val):
                             continue
                         
+                        # Regla de consistencia: 0 casos nunca puede ser epidemia
+                        if current_val == 0:
+                            risk = 0  # Éxito (sin casos = por debajo de cualquier umbral)
                         # Clasificación según canal endémico Bortman (INS)
-                        if current_val < li:
+                        elif current_val < li:
                             risk = 0  # Éxito (por debajo de lo esperado)
                         elif current_val < mg:
                             risk = 1  # Seguridad (dentro de lo esperado)

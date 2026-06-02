@@ -102,7 +102,7 @@ Todas las métricas utilizan nomenclatura estándar:
 |:---|:---|
 | **Macro F1-Score** | Métrica principal de selección. Promedio no ponderado del F1 de cada clase. |
 | **Exactitud** | Fracción de predicciones correctas sobre el total. |
-| **MAE Ordinal** | Error absoluto medio entre categorías ordinales. Rango: 0 (perfecto) a 2 (peor caso). |
+| **MAE Ordinal** | Error absoluto medio entre categorías ordinales. Rango: 0 (perfecto) a 2 (peor caso). Usa `.ravel()` para prevenir error de memoria con arrays 2D. |
 | **Kappa de Cohen** | Concordancia ajustada por azar con ponderación cuadrática. |
 | **Precision por clase** | Fracción de predicciones correctas para cada nivel de riesgo. |
 | **Sensibilidad por clase** | Fracción de casos reales detectados para cada nivel de riesgo. |

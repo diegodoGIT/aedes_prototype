@@ -19,6 +19,7 @@ Para cada dataset imputado, se construye el canal endémico usando la metodolog�
 *   **Cálculo:** Transformación logarítmica → media y desviación estándar → media geométrica (MG) → límites IC95% (LI, LS).
 *   **Prevención de leakage:** Solo datos de años estrictamente anteriores, ventana de 7 años, exclusión de outliers IQR, mínimo 3 años.
 *   **Clasificación:** Se asigna nivel de riesgo en 4 niveles (éxito, seguridad, alerta, epidemia) y se colapsa a 3 niveles operativos: éxito (< LI), en rango (LI ≤ x < LS) y epidemia (≥ LS).
+*   **Regla de consistencia:** Si casosconfirmados = 0, siempre se clasifica como éxito (0), independientemente de los umbrales Bortman. Esto previene el caso donde municipios con historial de 0 casos (LI=MG=LS=0) se clasificaban erróneamente como epidemia por la condición `0 >= 0`.
 *   **nivel_endemico:** La media geométrica (MG) se preserva como feature del modelo, proporcionando la escala de referencia del municipio.
 
 ### 3. Ingeniería de Características (Feature Engineering)

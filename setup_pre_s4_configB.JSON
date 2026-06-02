@@ -5,28 +5,7 @@
         "umbral_li", "umbral_ls",
         "nivel_riesgo_label"
     ],
-    "average_pairs": [
-        {
-            "new_column": "temp_avg",
-            "columns": ["tempmax", "tempmin"],
-            "drop_originals": true
-        },
-        {
-            "new_column": "temp_avg_lag1",
-            "columns": ["tempmax_lag1", "tempmin_lag1"],
-            "drop_originals": true
-        },
-        {
-            "new_column": "temp_avg_lag2",
-            "columns": ["tempmax_lag2", "tempmin_lag2"],
-            "drop_originals": true
-        },
-        {
-            "new_column": "temp_avg_lag3",
-            "columns": ["tempmax_lag3", "tempmin_lag3"],
-            "drop_originals": true
-        }
-    ],
+    "average_pairs": [],
     "rename_columns": {},
     "pca_groups": [
         {
@@ -48,12 +27,6 @@
             "drop_originals": true
         },
         {
-            "columns": ["temp_avg", "temp_avg_lag1", "temp_avg_lag2", "temp_avg_lag3"],
-            "n_components": 1,
-            "prefix": "pca_temp_avg",
-            "drop_originals": true
-        },
-        {
             "columns": [
                 "fenomeno_nina_mod", "fenomeno_nina_sev", "fenomeno_nino_mod", "fenomeno_nino_sev",
                 "fenomeno_lag1_nina_mod", "fenomeno_lag1_nina_sev", "fenomeno_lag1_nino_mod", "fenomeno_lag1_nino_sev",
@@ -65,5 +38,5 @@
             "drop_originals": true
         }
     ],
-    "notes": "CONFIG A (actual): tempmax+tempmin promediados en temp_avg, luego PCA con lags a 1 componente (pca_temp_avg_1). Dataset final: 22 columnas."
+    "notes": "CONFIG B (experimental): SIN promediar tempmax/tempmin, SIN PCA de temperatura. Se mantienen tempmax, tempmin, tempmax_lag1, tempmin_lag1, tempmax_lag2, tempmin_lag2, tempmax_lag3, tempmin_lag3 como 8 columnas individuales. Dataset final: 29 columnas."
 }

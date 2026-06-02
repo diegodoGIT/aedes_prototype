@@ -66,7 +66,7 @@ def ordinal_mae(y_true, y_pred):
     
     Rango: 0 (perfecto) a 2 (peor caso posible).
     """
-    return np.mean(np.abs(np.array(y_true, dtype=int) - np.array(y_pred, dtype=int)))
+    return np.mean(np.abs(np.array(y_true, dtype=int).ravel() - np.array(y_pred, dtype=int).ravel()))
 
 
 def calculate_classification_metrics(y_true, y_pred):
